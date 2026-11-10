@@ -1,0 +1,6 @@
+data/
+*.pdf
+.DS_Store
+__pycache__/
+.venv/
+comp_readme.md
