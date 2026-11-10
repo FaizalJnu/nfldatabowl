@@ -313,11 +313,90 @@ def profiles(routes: pd.DataFrame) -> dict:
 
 
 # -------------------------------------------------------- example plays
+#               turf       offense    defense    window     scrimmage  sticks     ball
+FIELD_COLORS = ("#2f7d3b", "#ffffff", "#14171f", "#ff7a1a", "#2f6bff", "#ffd60a", "#7a4a21")
+
+
+def draw_field(ax, play: dict, lo: float, hi: float) -> None:
+    """Green field, yard lines and numbers, blue line of scrimmage, yellow first-down line.
+    The offense moves up the page; lo and hi crop the field to the action."""
+    turf, _, _, _, los_c, sticks_c, _ = FIELD_COLORS
+    ax.set_facecolor(turf)
+    for yard in range(10, 111, 5):
+        if lo < yard < hi:
+            ax.axhline(yard, color="white", lw=1, alpha=0.45, zorder=1)
+            if yard % 10 == 0 and lo + 2 < yard < hi - 2:
+                for h in (9, 44.3):
+                    ax.text(h, yard, str(50 - abs(yard - 60)), color="white", alpha=0.55, fontsize=17,
+                            fontweight="bold", ha="center", va="center", zorder=1)
+    ax.axhline(play["los_x"], color=los_c, lw=3, zorder=2)
+    ax.axhline(play["sticks_x"], color=sticks_c, lw=3, zorder=2)
+    ax.set_xlim(0, 53.3); ax.set_ylim(lo, hi); ax.set_aspect("equal")
+    ax.set_xticks([]); ax.set_yticks([]); ax.grid(visible=False)
+    for sp in ax.spines.values():
+        sp.set_visible(True); sp.set_color("white"); sp.set_linewidth(2)
+
+
+def example_play_gif() -> None:
+    """Animate the first example play from the snap to the throw, ten frames a second."""
+    from matplotlib import animation, patheffects
+    play = json.loads((OUT / "example_plays.json").read_text())[0]
+    _, off_c, def_c, win_c, _, sticks_c, ball_c = FIELD_COLORS
+    halo = [patheffects.withStroke(linewidth=2.5, foreground="#14171f")]
+    across = lambda y: 53.3 - np.asarray(y)
+    everyone = play["players"]
+    target = next(p for p in everyone if p["target"])
+    lo = min(min(min(p["x"]) for p in everyone), play["ball_at_throw"][0]) - 2.5
+    hi = max(max(p["x"]) for p in everyone) + 4
+    n_frames, hold = len(target["x"]), 15
+
+    fig, ax = plt.subplots(figsize=(6.4, 5.6), dpi=80)
+    draw_field(ax, play, lo, hi)
+    artists = []
+    for p in everyone:
+        offense, runner = p["side"] == "offense", p["role"] in ("Pass Route", "Coverage")
+        trail, = ax.plot([], [], color=off_c if offense else def_c, lw=1.8 if runner else 0.9,
+                         alpha=0.95 if runner else 0.5, zorder=3)
+        glow, = ax.plot([], [], color=win_c, lw=6, zorder=4, solid_capstyle="round")
+        dot, = ax.plot([], [], "o", ms=10 if runner else 7, color=off_c if offense else def_c,
+                       mec=def_c if offense else off_c, mew=1.2, zorder=6)
+        artists.append((p, across(p["y"]), np.asarray(p["x"]), np.asarray(p.get("in_window", [0] * n_frames), dtype=bool),
+                        trail, glow, dot))
+    ring, = ax.plot([], [], "o", ms=18, mfc="none", mec=sticks_c, mew=2.5, zorder=7)
+    throw_line, = ax.plot([], [], color="white", lw=1.4, ls=(0, (4, 3)), zorder=5)
+    ball, = ax.plot([], [], "o", ms=9, color=ball_c, mec="white", mew=1.2, zorder=7)
+    clock = ax.text(1.5, hi - 1.5, "", color="white", fontsize=13, fontweight="bold", va="top", path_effects=halo, zorder=9)
+    ordinal = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th"}[play["down"]]
+    ax.set_title(f"{play['offense']} vs {play['defense']}, {ordinal} & {play['yardsToGo']}, snap to throw\n"
+                 f"{target['name']}'s window (orange) is open when the ball comes out", fontsize=10.5)
+
+    def draw(frame: int):
+        i = min(frame, n_frames - 1)
+        for p, h, v, flags, trail, glow, dot in artists:
+            trail.set_data(h[:i + 1], v[:i + 1])
+            shown = flags[:i + 1]
+            glow.set_data(np.where(shown, h[:i + 1], np.nan), np.where(shown, v[:i + 1], np.nan))
+            dot.set_data([h[i]], [v[i]])
+            if p["target"]:
+                ring.set_data([h[i]], [v[i]])
+                state = "window open" if flags[i] else "covered or short of the sticks"
+                clock.set_text(f"{i / 10:.1f} s after the snap\n{target['name'].split(' ', 1)[1]}: {state}"
+                               + ("\nBall is out" if frame >= n_frames - 1 else ""))
+                if frame >= n_frames - 1:       # the throw
+                    bh, bv = across(play["ball_at_throw"][1]), play["ball_at_throw"][0]
+                    throw_line.set_data([bh, h[i]], [bv, v[i]]); ball.set_data([bh], [bv])
+        return []
+
+    anim = animation.FuncAnimation(fig, draw, frames=n_frames + hold, blit=False)
+    anim.save(OUT / "fig_example_play.gif", writer=animation.PillowWriter(fps=10))
+    plt.close(fig)
+
+
 def example_plays() -> None:
     """The window on a real play: two 3rd downs drawn from outputs/example_plays.json."""
     from matplotlib import patheffects
     plays = json.loads((OUT / "example_plays.json").read_text())
-    turf, off_c, def_c, win_c, los_c, sticks_c, ball_c = "#2f7d3b", "#ffffff", "#14171f", "#ff7a1a", "#2f6bff", "#ffd60a", "#7a4a21"
+    turf, off_c, def_c, win_c, los_c, sticks_c, ball_c = FIELD_COLORS
     halo = [patheffects.withStroke(linewidth=2.5, foreground="#14171f")]
     across = lambda y: 53.3 - np.asarray(y)        # offense moves up the page, its left on the left
 
@@ -330,16 +409,7 @@ def example_plays() -> None:
     for ax, play, lo in zip(axes, plays, bottoms):
         everyone = play["players"]
         hi = lo + depth
-        ax.set_facecolor(turf)
-        for yard in range(10, 111, 5):
-            if lo < yard < hi:
-                ax.axhline(yard, color="white", lw=1, alpha=0.45, zorder=1)
-                if yard % 10 == 0 and lo + 2 < yard < hi - 2:
-                    for h in (9, 44.3):
-                        ax.text(h, yard, str(50 - abs(yard - 60)), color="white", alpha=0.55, fontsize=17,
-                                fontweight="bold", ha="center", va="center", zorder=1)
-        ax.axhline(play["los_x"], color=los_c, lw=3, zorder=2)
-        ax.axhline(play["sticks_x"], color=sticks_c, lw=3, zorder=2)
+        draw_field(ax, play, lo, hi)
 
         target = next(p for p in everyone if p["target"])
         for p in everyone:
@@ -361,11 +431,6 @@ def example_plays() -> None:
         ax.plot([bh, th], [bv, tv], color="white", lw=1.4, ls=(0, (4, 3)), zorder=5)
         ax.plot(th, tv, "o", ms=19, mfc="none", mec=sticks_c, mew=2.5, zorder=7)
         ax.plot(bh, bv, marker="o", ms=9, color=ball_c, mec="white", mew=1.2, zorder=7)
-
-        ax.set_xlim(0, 53.3); ax.set_ylim(lo, hi); ax.set_aspect("equal")
-        ax.set_xticks([]); ax.set_yticks([]); ax.grid(visible=False)
-        for sp in ax.spines.values():
-            sp.set_visible(True); sp.set_color("white"); sp.set_linewidth(2)
 
         flags = np.asarray(target["in_window"], dtype=bool)
         opened = np.argmax(flags) / 10 if flags.any() else None
@@ -427,6 +492,7 @@ def main() -> None:
     print(json.dumps(findings, indent=2, default=float))
     write_page(json.loads(json.dumps(findings, default=float)))
     example_plays()
+    example_play_gif()
 
 
 if __name__ == "__main__":

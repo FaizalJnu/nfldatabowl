@@ -17,6 +17,10 @@ The window on two real 3rd downs: Tyreek Hill is thrown to while his window is o
 
 ![The window on a real play: two 3rd downs against man coverage drawn from the snap to the throw](outputs/fig_example_plays.png)
 
+The first of those plays in motion, from the snap to the throw:
+
+![Animation of the Kansas City 3rd and 6: Tyreek Hill's window opens and is still open when the ball comes out](outputs/fig_example_play.gif)
+
 **2. Two yards at release is the line between a bad throw and a good one.**
 Across all downs against man, completion rate climbs steeply up to about 2 yards of separation and slowly after it: a target with 2+ yards is completed 69% of the time for 9.1 yards, a target without, 41% for 6.9. The curve crosses the average throw against man (54%) just before 2 yards, so we call 2+ yards "open": every half-yard band above it beats the average and every band below 1.5 falls short. The gap between open and covered is 28–31 points whether the line is drawn at 1.5, 2, 2.5 or 3 yards, so the finding does not depend on the exact cut.
 
