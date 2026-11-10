@@ -17,6 +17,8 @@ OUT = Path("outputs")
 KEYS = ["gameId", "playId"]
 OPEN_YARDS = 2.0      # separation from the nearest coverage defender at release
 THIN_WINDOWS = 50     # yards-to-go rows with fewer windows are flagged as thin
+THIN_BELOW = 30       # on the page, any group smaller than this is marked thin
+MIN_FOR_RATE = 10     # and no rate is shown for a group smaller than this
 MIN_ROUTES = 50       # man-coverage routes needed to appear in the profile chart
 
 INK, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
@@ -163,13 +165,27 @@ def sticks_clock(routes: pd.DataFrame) -> dict:
     closed = win[win.open_at_throw == 0]
 
     q = lambda s: s.quantile([0.25, 0.5, 0.75]).round(2).tolist()
+    states = ["Open at the throw", "Window closed before the throw", "Never open"]
+
+    def first_down_by_state(targets: pd.DataFrame) -> list:
+        """First-down rate per window state; no rate is given for a group under MIN_FOR_RATE."""
+        out = []
+        for state in states:
+            g = targets[targets.state == state]
+            out.append({"state": state, "targets": len(g),
+                        "rate": round(g.first_down.mean(), 3) if len(g) >= MIN_FOR_RATE else None})
+        return out
+
     rows = []
     for b, g in win.groupby("bucket", observed=True):
         c = g[g.open_at_throw == 0]
+        in_bucket = late[late.bucket == b]
         rows.append({"to_go": b, "routes": int((late.bucket == b).sum()), "windows": len(g),
                      "open_t": q(g.window_open_t), "throw_t": q(g.time_to_throw),
                      "closed_windows": len(c), "share_closed": round(len(c) / len(g), 3),
-                     "duration": km_duration(g), "thin_sample": len(g) < THIN_WINDOWS})
+                     "duration": km_duration(g), "thin_sample": len(g) < THIN_WINDOWS,
+                     "window_rate": round(len(g) / len(in_bucket), 3),
+                     "first_down_by_target_state": first_down_by_state(in_bucket[in_bucket.targeted == 1])})
 
     fig, ax = plt.subplots(figsize=(8.5, 4.4))
     for y, r in enumerate(rows):
@@ -295,6 +311,26 @@ def profiles(routes: pd.DataFrame) -> dict:
             "bottom": q.tail(8)[["player", "pos", "open_rate", "open_rate_adj"]].round(3).to_dict("records")}
 
 
+# ----------------------------------------------------------------- page
+def write_page(findings: dict) -> None:
+    """index.html: one self-contained page (inline CSS, JS and data) built from the findings."""
+    prof = pd.read_csv(OUT / "receiver_profiles.csv")
+    clock = [{"to_go": r["to_go"], "routes": r["routes"], "windows": r["windows"], "window_rate": r["window_rate"],
+              "opens_s": r["open_t"][1], "ball_out_s": r["throw_t"][1],
+              "stays_open_s": r["duration"]["median_s"], "ended_before_throw": r["duration"]["ended_before_throw"],
+              "first_down": r["first_down_by_target_state"]} for r in findings["sticks_clock"]["by_yards_to_go"]]
+    receivers = [{"player": r.player, "pos": r.pos, "team": r.team, "routes": int(r.routes),
+                  "rate": round(r.open_rate_adj, 3), "low": round(r.open_rate_adj - 1.64 * r.se, 3),
+                  "high": round(r.open_rate_adj + 1.64 * r.se, 3)} for r in prof.itertuples()]
+    m = findings["matchup"]
+    data = {"thin_below": THIN_BELOW, "clock": clock, "receivers": receivers,
+            "position_mean": findings["profiles"]["position_mean"],
+            "matchup": {"open_rate": m["open_rate"], "routes": m["routes"],
+                        "snap_distance": m["median_snap_distance_yards"]}}
+    page = Path("page_template.html").read_text().replace("__DATA__", json.dumps(data, default=float))
+    Path("index.html").write_text(page)
+
+
 def main() -> None:
     routes = load()
     findings = {"open_definition_yards": OPEN_YARDS, "wr_te_man_routes": len(routes),
@@ -303,6 +339,7 @@ def main() -> None:
                 "matchup": matchup_grid(routes), "profiles": profiles(routes)}
     (OUT / "findings.json").write_text(json.dumps(findings, indent=2, default=float))
     print(json.dumps(findings, indent=2, default=float))
+    write_page(json.loads(json.dumps(findings, default=float)))
 
 
 if __name__ == "__main__":

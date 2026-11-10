@@ -2,6 +2,8 @@
 
 **On 3rd down against man coverage, when does a first-down throw come open, and how long does it stay open?**
 
+Interactive version: https://faizaljnu.github.io/nfldatabowl/
+
 On 3rd and 4th down against man coverage, the first-down window opens later the more yards the offense needs (a median 1.6 seconds after the snap with 1–3 to go, 1.9 with 4–6, 2.4 with 7–10 and about 3.3 with 11+), and 36% of windows (269 of 740) had closed before the ball came out. We timed every WR and TE route on those downs in Weeks 1–8 of 2021 (3,656 routes, 944 plays) from player tracking, where a window is at least 0.3 seconds with the receiver 2+ yards from the nearest coverage defender and at or past the first-down line; one opened on only 1 route in 5. Once open, a window typically stays open about 1.2 seconds (a survival estimate, because the throw cuts off windows that are still open), and targets still open at the throw gained the first down 66% of the time, against 49% for targets whose window had closed (only 53 targets) and 40% for targets who were never open. A coordinator or quarterback coach can use the clock for each distance to time route depth and the quarterback's drop to when the window is there, and the matchup grid and receiver profiles below to choose who to isolate. Tracking ends at the throw, so windows that would have opened later are invisible and opening times lean early; defenders are inferred from position rather than assignment, and the clock is a league-level finding, not a ranking of players.
 
 ## What a coach sees

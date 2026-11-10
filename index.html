@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Sticks Clock</title>
+<style>
+:root{--bg:#fcfcfb;--panel:#f3f2ee;--ink:#0b0b0b;--muted:#52514e;--line:#dcdbd6;--blue:#2a78d6;--bar:#b7d3f6;--orange:#eb6834;--heat:42,120,214}
+@media (prefers-color-scheme:dark){:root{--bg:#1a1a19;--panel:#262624;--ink:#f0efec;--muted:#c3c2b7;--line:#3c3c39;--blue:#3987e5;--bar:#184f95;--orange:#d95926;--heat:57,135,229}}
+*{box-sizing:border-box}
+body{margin:0;overflow-wrap:anywhere;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.7rem;margin:0 0 4px}
+h2{font-size:1.2rem;margin:36px 0 6px}
+p{margin:6px 0}
+.sub,.note,.n{color:var(--muted)}
+.note{font-size:.88rem}
+.n{font-size:.82rem;display:block}
+.rec .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thin{display:inline-block;font-size:.72rem;border:1px solid var(--muted);border-radius:4px;padding:0 5px;margin-left:4px;color:var(--muted);white-space:nowrap}
+fieldset{border:0;padding:0;margin:18px 0 10px}
+legend{font-weight:600;padding:0;margin-bottom:6px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg label{flex:1 1 70px;text-align:center;padding:10px 8px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:600;background:var(--panel)}
+.seg input{position:absolute;opacity:0}
+.seg input:checked+span{color:var(--bg)}
+.seg label:has(input:checked){background:var(--blue);border-color:var(--blue)}
+.seg label:has(input:focus-visible){outline:2px solid var(--ink);outline-offset:2px}
+.clock{position:relative;height:118px;margin:26px 28px 4px}
+.axis{position:absolute;left:0;right:0;top:64px;border-top:1px solid var(--line)}
+.tick{position:absolute;top:64px;width:1px;height:6px;background:var(--muted)}
+.tick span{position:absolute;top:8px;left:-12px;width:24px;text-align:center;font-size:.78rem;color:var(--muted)}
+.stay{position:absolute;top:34px;height:22px;background:var(--bar);border-radius:0 4px 4px 0}
+.mark{position:absolute;top:36px;width:18px;height:18px;margin-left:-9px;border:2px solid var(--bg)}
+.mark.open{background:var(--blue);border-radius:50%}
+.mark.out{background:var(--orange);transform:rotate(45deg) scale(.82)}
+.lab{position:absolute;font-size:.8rem;white-space:nowrap;transform:translateX(-50%)}
+.lab.open{top:10px}.lab.out{top:10px}
+.key{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin:0 8px 14px}
+.key i{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-1px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tile{background:var(--panel);border-radius:10px;padding:12px}
+.tile b{display:block;font-size:1.55rem;line-height:1.2}
+.tile .what{font-size:.88rem;font-weight:600}
+.rates{margin-top:8px}
+.rate{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.track{position:relative;height:18px}
+.fill{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:0 4px 4px 0}
+.val{font-weight:700}
+table{border-collapse:separate;border-spacing:3px;width:100%;table-layout:fixed}
+th{font-weight:600;font-size:.88rem;padding:6px 4px;text-align:center}
+th:first-child{width:44px}
+@media (max-width:640px){th{font-size:.78rem;padding:6px 1px}}
+td.cell{text-align:center;padding:12px 4px;border-radius:6px}
+td.cell b{font-size:1.25rem;display:block}
+input[type=search]{width:100%;padding:10px 12px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:8px 0}
+.rec{display:grid;grid-template-columns:minmax(0,1.3fr) 84px minmax(0,1.5fr);gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.rec .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iv{position:relative;height:16px}
+.iv .rng{position:absolute;top:7px;height:2px;background:var(--blue);opacity:.45}
+.iv .dot{position:absolute;top:2px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--blue);border:2px solid var(--bg)}
+.iv .avg{position:absolute;top:0;bottom:0;border-left:1px dashed var(--muted)}
+ul{padding-left:20px;margin:6px 0}
+@media (max-width:640px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile b{font-size:1.25rem}.rate{grid-template-columns:1fr}.rec{grid-template-columns:minmax(0,1fr) 78px 80px}h1{font-size:1.45rem}}
+</style>
+</head>
+<body>
+<main>
+<h1>The Sticks Clock</h1>
+<p class="sub">3rd and 4th down against man coverage: when does a first-down throw come open, how long does it stay open, and when does the ball come out?</p>
+<p class="note">A <b>window</b> is a wide receiver or tight end with 2+ yards on the nearest coverage defender, at or past the first-down line, for at least 0.3 seconds. 2021 season, Weeks 1–8, league-wide.</p>
+
+<fieldset>
+<legend>Yards to go</legend>
+<div class="seg" id="seg"></div>
+</fieldset>
+
+<div class="clock" id="clock" role="img"></div>
+<div class="key"><span><i style="background:var(--blue);border-radius:50%"></i>Window opens</span><span><i style="background:var(--bar)"></i>Typical time it stays open</span><span><i style="background:var(--orange);transform:rotate(45deg) scale(.8)"></i>Ball comes out, same routes</span><span>Seconds after the snap</span></div>
+
+<div class="tiles" id="tiles"></div>
+
+<h2>What a throw is worth</h2>
+<p class="note">Share of targets that gained the first down, by where the receiver's window stood when the ball came out.</p>
+<div class="rates" id="rates"></div>
+<p class="note">Groups under 30 are marked thin. Groups under 10 show no rate.</p>
+
+<h2>Who to match up</h2>
+<p class="note">Share of man-coverage routes, all downs, where the receiver has 2+ yards of separation when the ball comes out, by the nearest coverage defender at the snap. That defender is not always the one assigned to him.</p>
+<div id="grid"></div>
+
+<h2>Receiver lookup</h2>
+<p><b>How a receiver gets open, not who is best.</b></p>
+<p class="note">Share of man-coverage routes, all downs, where he is already open (2+ yards) when the ball comes out. Receivers with 50+ routes. The number is pulled toward the average for his position because samples are small; the line is the 90% range and the dashed mark is his position's average. Receivers who may win later in the play look worse here. This is not a Sticks Clock number: the clock is league-wide only.</p>
+<input type="search" id="q" placeholder="Type a receiver or team (e.g. Kupp, LV)" aria-label="Find a receiver">
+<div id="recs"></div>
+
+<h2>Read this before you use it</h2>
+<ul class="note">
+<li>Tracking stops at the throw. A window that would have opened later is never seen, so opening times lean early.</li>
+<li>Time open is a survival estimate, because the throw cuts off windows that are still open. Quarterbacks tend to throw to open receivers, so the throw is not independent of the window.</li>
+<li>Open means distance to the nearest coverage defender. It does not account for pass rush, throwing lanes or the quarterback's read.</li>
+<li>Sacks, scrambles and plays with no tagged release are left out.</li>
+</ul>
+</main>
+
+<script type="application/json" id="data">{"thin_below": 30, "clock": [{"to_go": "1-3", "routes": 956, "windows": 295, "window_rate": 0.309, "opens_s": 1.6, "ball_out_s": 2.6, "stays_open_s": 1.1, "ended_before_throw": 139, "first_down": [{"state": "Open at the throw", "targets": 68, "rate": 0.735}, {"state": "Window closed before the throw", "targets": 23, "rate": 0.565}, {"state": "Never open", "targets": 125, "rate": 0.48}]}, {"to_go": "4-6", "routes": 1276, "windows": 223, "window_rate": 0.175, "opens_s": 1.9, "ball_out_s": 2.7, "stays_open_s": 0.9, "ended_before_throw": 102, "first_down": [{"state": "Open at the throw", "targets": 49, "rate": 0.673}, {"state": "Window closed before the throw", "targets": 18, "rate": 0.333}, {"state": "Never open", "targets": 234, "rate": 0.449}]}, {"to_go": "7-10", "routes": 1129, "windows": 176, "window_rate": 0.156, "opens_s": 2.4, "ball_out_s": 3.35, "stays_open_s": 1.5, "ended_before_throw": 61, "first_down": [{"state": "Open at the throw", "targets": 44, "rate": 0.568}, {"state": "Window closed before the throw", "targets": 11, "rate": 0.545}, {"state": "Never open", "targets": 210, "rate": 0.352}]}, {"to_go": "11+", "routes": 295, "windows": 46, "window_rate": 0.156, "opens_s": 3.25, "ball_out_s": 4.0, "stays_open_s": 2.4, "ended_before_throw": 11, "first_down": [{"state": "Open at the throw", "targets": 14, "rate": 0.571}, {"state": "Window closed before the throw", "targets": 1, "rate": null}, {"state": "Never open", "targets": 53, "rate": 0.17}]}], "receivers": [{"player": "Darren Waller", "pos": "TE", "team": "LV", "routes": 81, "rate": 0.451, "low": 0.384, "high": 0.518}, {"player": "Cooper Kupp", "pos": "WR", "team": "LA", "routes": 57, "rate": 0.449, "low": 0.375, "high": 0.523}, {"player": "Cole Beasley", "pos": "WR", "team": "BUF", "routes": 58, "rate": 0.446, "low": 0.372, "high": 0.52}, {"player": "T.J. Hockenson", "pos": "TE", "team": "DET", "routes": 59, "rate": 0.442, "low": 0.368, "high": 0.516}, {"player": "Hunter Henry", "pos": "TE", "team": "NE", "routes": 69, "rate": 0.439, "low": 0.368, "high": 0.51}, {"player": "Michael Pittman", "pos": "WR", "team": "IND", "routes": 54, "rate": 0.427, "low": 0.353, "high": 0.501}, {"player": "Jaylen Waddle", "pos": "WR", "team": "MIA", "routes": 69, "rate": 0.424, "low": 0.353, "high": 0.495}, {"player": "Amari Cooper", "pos": "WR", "team": "DAL", "routes": 70, "rate": 0.421, "low": 0.352, "high": 0.49}, {"player": "A.J. Brown", "pos": "WR", "team": "TEN", "routes": 53, "rate": 0.414, "low": 0.34, "high": 0.488}, {"player": "Tyreek Hill", "pos": "WR", "team": "KC", "routes": 54, "rate": 0.41, "low": 0.336, "high": 0.484}, {"player": "Kendrick Bourne", "pos": "WR", "team": "NE", "routes": 76, "rate": 0.403, "low": 0.336, "high": 0.47}, {"player": "Keenan Allen", "pos": "WR", "team": "LAC", "routes": 69, "rate": 0.402, "low": 0.333, "high": 0.471}, {"player": "Kalif Raymond", "pos": "WR", "team": "DET", "routes": 57, "rate": 0.4, "low": 0.328, "high": 0.472}, {"player": "Dalton Schultz", "pos": "TE", "team": "DAL", "routes": 57, "rate": 0.4, "low": 0.328, "high": 0.472}, {"player": "Ricky Seals-Jones", "pos": "TE", "team": "WAS", "routes": 57, "rate": 0.4, "low": 0.328, "high": 0.472}, {"player": "Cedrick Wilson", "pos": "WR", "team": "DAL", "routes": 59, "rate": 0.394, "low": 0.322, "high": 0.466}, {"player": "Jakobi Meyers", "pos": "WR", "team": "NE", "routes": 95, "rate": 0.393, "low": 0.329, "high": 0.457}, {"player": "Hunter Renfrow", "pos": "WR", "team": "LV", "routes": 67, "rate": 0.393, "low": 0.324, "high": 0.462}, {"player": "Antonio Brown", "pos": "WR", "team": "TB", "routes": 55, "rate": 0.39, "low": 0.318, "high": 0.462}, {"player": "Jared Cook", "pos": "TE", "team": "LAC", "routes": 58, "rate": 0.381, "low": 0.309, "high": 0.453}, {"player": "Henry Ruggs", "pos": "WR", "team": "LV", "routes": 66, "rate": 0.381, "low": 0.312, "high": 0.45}, {"player": "Zach Pascal", "pos": "WR", "team": "IND", "routes": 53, "rate": 0.38, "low": 0.306, "high": 0.454}, {"player": "K.J. Osborn", "pos": "WR", "team": "MIN", "routes": 63, "rate": 0.374, "low": 0.303, "high": 0.445}, {"player": "Emmanuel Sanders", "pos": "WR", "team": "BUF", "routes": 63, "rate": 0.374, "low": 0.303, "high": 0.445}, {"player": "Justin Jefferson", "pos": "WR", "team": "MIN", "routes": 69, "rate": 0.372, "low": 0.303, "high": 0.441}, {"player": "Marquez Callaway", "pos": "WR", "team": "NO", "routes": 51, "rate": 0.369, "low": 0.295, "high": 0.443}, {"player": "Tyler Conklin", "pos": "TE", "team": "MIN", "routes": 54, "rate": 0.368, "low": 0.296, "high": 0.44}, {"player": "C.J. Uzomah", "pos": "TE", "team": "CIN", "routes": 63, "rate": 0.366, "low": 0.295, "high": 0.437}, {"player": "Davante Adams", "pos": "WR", "team": "GB", "routes": 55, "rate": 0.365, "low": 0.293, "high": 0.437}, {"player": "CeeDee Lamb", "pos": "WR", "team": "DAL", "routes": 69, "rate": 0.365, "low": 0.296, "high": 0.434}, {"player": "Corey Davis", "pos": "WR", "team": "NYJ", "routes": 61, "rate": 0.364, "low": 0.293, "high": 0.435}, {"player": "Adam Humphries", "pos": "WR", "team": "WAS", "routes": 61, "rate": 0.364, "low": 0.293, "high": 0.435}, {"player": "DeVonta Smith", "pos": "WR", "team": "PHI", "routes": 53, "rate": 0.363, "low": 0.291, "high": 0.435}, {"player": "Kyle Pitts", "pos": "TE", "team": "ATL", "routes": 56, "rate": 0.362, "low": 0.29, "high": 0.434}, {"player": "Cameron Brate", "pos": "TE", "team": "TB", "routes": 51, "rate": 0.361, "low": 0.287, "high": 0.435}, {"player": "Tim Patrick", "pos": "WR", "team": "DEN", "routes": 55, "rate": 0.357, "low": 0.285, "high": 0.429}, {"player": "Brandin Cooks", "pos": "WR", "team": "HOU", "routes": 55, "rate": 0.357, "low": 0.285, "high": 0.429}, {"player": "Mike Gesicki", "pos": "TE", "team": "MIA", "routes": 68, "rate": 0.345, "low": 0.278, "high": 0.412}, {"player": "Robert Woods", "pos": "WR", "team": "LA", "routes": 55, "rate": 0.341, "low": 0.27, "high": 0.412}, {"player": "Adam Thielen", "pos": "WR", "team": "MIN", "routes": 70, "rate": 0.34, "low": 0.273, "high": 0.407}, {"player": "Tyler Boyd", "pos": "WR", "team": "CIN", "routes": 72, "rate": 0.335, "low": 0.269, "high": 0.401}, {"player": "Courtland Sutton", "pos": "WR", "team": "DEN", "routes": 58, "rate": 0.332, "low": 0.263, "high": 0.401}, {"player": "Travis Kelce", "pos": "TE", "team": "KC", "routes": 59, "rate": 0.329, "low": 0.26, "high": 0.398}, {"player": "Stefon Diggs", "pos": "WR", "team": "BUF", "routes": 60, "rate": 0.327, "low": 0.258, "high": 0.396}, {"player": "Terry McLaurin", "pos": "WR", "team": "WAS", "routes": 77, "rate": 0.316, "low": 0.252, "high": 0.38}, {"player": "Nelson Agholor", "pos": "WR", "team": "NE", "routes": 84, "rate": 0.315, "low": 0.253, "high": 0.377}, {"player": "Mike Evans", "pos": "WR", "team": "TB", "routes": 100, "rate": 0.314, "low": 0.255, "high": 0.373}, {"player": "Tee Higgins", "pos": "WR", "team": "CIN", "routes": 53, "rate": 0.312, "low": 0.241, "high": 0.383}, {"player": "Chris Godwin", "pos": "WR", "team": "TB", "routes": 95, "rate": 0.312, "low": 0.251, "high": 0.373}, {"player": "Jalen Guyton", "pos": "WR", "team": "LAC", "routes": 64, "rate": 0.309, "low": 0.242, "high": 0.376}, {"player": "Mike Williams", "pos": "WR", "team": "LAC", "routes": 63, "rate": 0.304, "low": 0.237, "high": 0.371}, {"player": "Bryan Edwards", "pos": "WR", "team": "LV", "routes": 71, "rate": 0.301, "low": 0.237, "high": 0.365}, {"player": "Ja'Marr Chase", "pos": "WR", "team": "CIN", "routes": 72, "rate": 0.269, "low": 0.207, "high": 0.331}], "position_mean": {"TE": 0.397, "WR": 0.367}, "matchup": {"open_rate": {"WR": {"CB": 0.336, "S": 0.487, "LB": 0.605}, "TE": {"CB": 0.443, "S": 0.316, "LB": 0.453}}, "routes": {"WR": {"CB": 4739, "S": 596, "LB": 309}, "TE": {"CB": 648, "S": 791, "LB": 684}}, "snap_distance": {"CB": 3.19, "LB": 5.18, "S": 3.99}}}</script>
+<script>
+const D = JSON.parse(document.getElementById('data').textContent);
+const $ = id => document.getElementById(id);
+const pct = x => Math.round(x * 100) + '%';
+const sec = x => x.toFixed(1) + ' s';
+const thin = n => n < D.thin_below ? '<span class="thin">thin sample</span>' : '';
+const MAX_S = 6, pos = t => (Math.min(t, MAX_S) / MAX_S * 100) + '%';
+
+function renderClock(r) {
+  const stay = r.stays_open_s;
+  let h = '<div class="axis"></div>';
+  for (let t = 0; t <= MAX_S; t++) h += `<div class="tick" style="left:${pos(t)}"><span>${t}</span></div>`;
+  if (stay !== null) h += `<div class="stay" style="left:${pos(r.opens_s)};width:${Math.min(stay, MAX_S - r.opens_s) / MAX_S * 100}%"></div>`;
+  h += `<div class="mark open" style="left:${pos(r.opens_s)}"></div><div class="lab open" style="left:${pos(r.opens_s)}">opens ${sec(r.opens_s)}</div>`;
+  h += `<div class="mark out" style="left:${pos(r.ball_out_s)}"></div><div class="lab out" style="left:${pos(r.ball_out_s)};top:92px">ball out ${sec(r.ball_out_s)}</div>`;
+  $('clock').innerHTML = h;
+  $('clock').setAttribute('aria-label', `With ${r.to_go} yards to go the window opens ${sec(r.opens_s)} after the snap and the ball comes out at ${sec(r.ball_out_s)}`);
+  const tile = (what, val, n, flag) => `<div class="tile"><span class="what">${what}</span><b>${val}</b><span class="n">${n}${flag}</span></div>`;
+  $('tiles').innerHTML =
+    tile('Window opens', sec(r.opens_s) + ' after snap', `${r.windows} windows`, thin(r.windows)) +
+    tile('Stays open', stay === null ? 'Too few to say' : 'about ' + sec(stay), `${r.windows} windows, ${r.ended_before_throw} ended before the throw`, thin(r.ended_before_throw)) +
+    tile('Ball comes out', sec(r.ball_out_s) + ' after snap', `same ${r.windows} routes`, thin(r.windows)) +
+    tile('A window appears on', pct(r.window_rate) + ' of routes', `${r.routes} routes`, thin(r.routes));
+  $('rates').innerHTML = r.first_down.map(s => {
+    const show = s.rate !== null;
+    return `<div class="rate"><div>${s.state}<span class="n">${s.targets} ${s.targets === 1 ? "target" : "targets"}${thin(s.targets)}</span></div>
+      <div class="track">${show ? `<div class="fill" style="width:${s.rate * 80}%"></div><span class="val" style="position:absolute;left:calc(${s.rate * 80}% + 8px)">${pct(s.rate)}</span>` : '<span class="n">Too few targets to show a rate</span>'}</div></div>`;
+  }).join('');
+}
+
+function renderGrid() {
+  const m = D.matchup, cols = [['CB', 'Cornerback'], ['S', 'Safety'], ['LB', 'Linebacker']];
+  let h = '<table><tr><th></th>' + cols.map(c => `<th>${c[1]}<span class="n">starts ${m.snap_distance[c[0]].toFixed(1)} yd away</span></th>`).join('') + '</tr>';
+  for (const p of ['WR', 'TE']) h += `<tr><th>${p}</th>` + cols.map(c => {
+    const rate = m.open_rate[p][c[0]], n = m.routes[p][c[0]];
+    return `<td class="cell" style="background:rgba(var(--heat),${(0.1 + (rate - 0.25) * 1.4).toFixed(2)})"><b>${n < 10 ? '–' : pct(rate)}</b><span class="n" style="color:var(--ink)">${n.toLocaleString()} routes${thin(n)}</span></td>`;
+  }).join('') + '</tr>';
+  $('grid').innerHTML = h + '</table><p class="note">Distance is the median gap to that defender at the snap, WR and TE routes together. Linebackers start farther away, which is part of why receivers come open against them.</p>';
+}
+
+function renderRecs() {
+  const q = $('q').value.trim().toLowerCase(), lo = 0.15, hi = 0.6, x = v => ((v - lo) / (hi - lo) * 100) + '%';
+  const rows = D.receivers.filter(r => !q || (r.player + ' ' + r.team + ' ' + r.pos).toLowerCase().includes(q));
+  $('recs').innerHTML = rows.map(r => `<div class="rec"><div class="who">${r.player}<span class="n">${r.pos}, ${r.team} · ${r.routes} routes</span></div>
+    <div><b>${pct(r.rate)}</b><span class="n">${pct(r.low)}–${pct(r.high)}</span></div>
+    <div class="iv"><div class="avg" style="left:${x(D.position_mean[r.pos])}"></div><div class="rng" style="left:${x(r.low)};width:${(r.high - r.low) / (hi - lo) * 100}%"></div><div class="dot" style="left:${x(r.rate)}"></div></div></div>`).join('')
+    || '<p class="note">No receiver with 50+ man-coverage routes matches.</p>';
+}
+
+function pick(toGo) {
+  const r = D.clock.find(c => c.to_go === toGo) || D.clock[0];
+  document.querySelectorAll('#seg input').forEach(i => { i.checked = i.value === r.to_go; });
+  renderClock(r);
+}
+
+$('seg').innerHTML = D.clock.map(c => `<label><input type="radio" name="d" value="${c.to_go}"><span>${c.to_go.replace('-', '–')}</span></label>`).join('');
+$('seg').addEventListener('change', e => { history.replaceState(null, '', '#' + e.target.value); pick(e.target.value); });
+$('q').addEventListener('input', renderRecs);
+window.addEventListener('hashchange', () => pick(location.hash.slice(1)));
+renderGrid(); renderRecs(); pick(location.hash.slice(1));
+</script>
+</body>
+</html>

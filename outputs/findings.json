@@ -102,7 +102,25 @@
           "share_lasting_beyond_0.5s": 0.772,
           "share_lasting_beyond_1.0s": 0.52
         },
-        "thin_sample": false
+        "thin_sample": false,
+        "window_rate": 0.309,
+        "first_down_by_target_state": [
+          {
+            "state": "Open at the throw",
+            "targets": 68,
+            "rate": 0.735
+          },
+          {
+            "state": "Window closed before the throw",
+            "targets": 23,
+            "rate": 0.565
+          },
+          {
+            "state": "Never open",
+            "targets": 125,
+            "rate": 0.48
+          }
+        ]
       },
       {
         "to_go": "4-6",
@@ -127,7 +145,25 @@
           "share_lasting_beyond_0.5s": 0.733,
           "share_lasting_beyond_1.0s": 0.409
         },
-        "thin_sample": false
+        "thin_sample": false,
+        "window_rate": 0.175,
+        "first_down_by_target_state": [
+          {
+            "state": "Open at the throw",
+            "targets": 49,
+            "rate": 0.673
+          },
+          {
+            "state": "Window closed before the throw",
+            "targets": 18,
+            "rate": 0.333
+          },
+          {
+            "state": "Never open",
+            "targets": 234,
+            "rate": 0.449
+          }
+        ]
       },
       {
         "to_go": "7-10",
@@ -152,7 +188,25 @@
           "share_lasting_beyond_0.5s": 0.817,
           "share_lasting_beyond_1.0s": 0.656
         },
-        "thin_sample": false
+        "thin_sample": false,
+        "window_rate": 0.156,
+        "first_down_by_target_state": [
+          {
+            "state": "Open at the throw",
+            "targets": 44,
+            "rate": 0.568
+          },
+          {
+            "state": "Window closed before the throw",
+            "targets": 11,
+            "rate": 0.545
+          },
+          {
+            "state": "Never open",
+            "targets": 210,
+            "rate": 0.352
+          }
+        ]
       },
       {
         "to_go": "11+",
@@ -177,7 +231,25 @@
           "share_lasting_beyond_0.5s": 0.841,
           "share_lasting_beyond_1.0s": 0.785
         },
-        "thin_sample": true
+        "thin_sample": true,
+        "window_rate": 0.156,
+        "first_down_by_target_state": [
+          {
+            "state": "Open at the throw",
+            "targets": 14,
+            "rate": 0.571
+          },
+          {
+            "state": "Window closed before the throw",
+            "targets": 1,
+            "rate": null
+          },
+          {
+            "state": "Never open",
+            "targets": 53,
+            "rate": 0.17
+          }
+        ]
       }
     ]
   },
