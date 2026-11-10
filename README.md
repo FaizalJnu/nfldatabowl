@@ -13,6 +13,10 @@ On the routes where a window opened, the ball came out a median 2.9 seconds afte
 
 ![The Sticks Clock: when windows open, how long they typically stay open, and when the ball comes out, by yards to go](outputs/fig0_sticks_clock.png)
 
+The window on two real 3rd downs: Tyreek Hill is thrown to while his window is open and scores, and Tyler Lockett is thrown to after his has closed while two teammates are open past the sticks.
+
+![The window on a real play: two 3rd downs against man coverage drawn from the snap to the throw](outputs/fig_example_plays.png)
+
 **2. Two yards at release is the line between a bad throw and a good one.**
 Across all downs against man, completion rate climbs steeply up to about 2 yards of separation and slowly after it: a target with 2+ yards is completed 69% of the time for 9.1 yards, a target without, 41% for 6.9. The curve crosses the average throw against man (54%) just before 2 yards, so we call 2+ yards "open": every half-yard band above it beats the average and every band below 1.5 falls short. The gap between open and covered is 28–31 points whether the line is drawn at 1.5, 2, 2.5 or 3 yards, so the finding does not depend on the exact cut.
 
@@ -39,6 +43,7 @@ Receivers with 50+ man-coverage routes, all downs. The top of the chart is early
 pip install -r requirements.txt
 python make_report.py        # rebuilds every figure and number from outputs/routes_man.csv
 python build_features.py     # optional: rebuilds routes_man.csv from the raw data in data/
+python build_example_plays.py  # optional: rebuilds outputs/example_plays.json from the raw data in data/
 ```
 
 The raw tracking data is not in this repo. `outputs/routes_man.csv` is the derived per-route table (one row per route against man coverage, including the window fields), so `make_report.py` runs without it. Every number quoted above is in `outputs/findings.json`, and the profile table is `outputs/receiver_profiles.csv`.

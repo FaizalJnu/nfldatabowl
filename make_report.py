@@ -6,6 +6,7 @@ Needs only the derived table that ships in this repo, not the raw tracking data.
 """
 from pathlib import Path
 import json
+import textwrap
 
 import matplotlib
 matplotlib.use("Agg")
@@ -311,6 +312,91 @@ def profiles(routes: pd.DataFrame) -> dict:
             "bottom": q.tail(8)[["player", "pos", "open_rate", "open_rate_adj"]].round(3).to_dict("records")}
 
 
+# -------------------------------------------------------- example plays
+def example_plays() -> None:
+    """The window on a real play: two 3rd downs drawn from outputs/example_plays.json."""
+    from matplotlib import patheffects
+    plays = json.loads((OUT / "example_plays.json").read_text())
+    turf, off_c, def_c, win_c, los_c, sticks_c, ball_c = "#2f7d3b", "#ffffff", "#14171f", "#ff7a1a", "#2f6bff", "#ffd60a", "#7a4a21"
+    halo = [patheffects.withStroke(linewidth=2.5, foreground="#14171f")]
+    across = lambda y: 53.3 - np.asarray(y)        # offense moves up the page, its left on the left
+
+    # Crop each panel to the action, with the same depth of field in both.
+    bottoms = [min(min(min(p["x"]) for p in play["players"]), play["ball_at_throw"][0]) - 2.5 for play in plays]
+    depth = max(max(max(p["x"]) for p in play["players"]) + 4 - lo for play, lo in zip(plays, bottoms))
+    wrap = lambda text: "\n".join(textwrap.wrap(text, 78))
+
+    fig, axes = plt.subplots(1, len(plays), figsize=(14, 7.6))
+    for ax, play, lo in zip(axes, plays, bottoms):
+        everyone = play["players"]
+        hi = lo + depth
+        ax.set_facecolor(turf)
+        for yard in range(10, 111, 5):
+            if lo < yard < hi:
+                ax.axhline(yard, color="white", lw=1, alpha=0.45, zorder=1)
+                if yard % 10 == 0 and lo + 2 < yard < hi - 2:
+                    for h in (9, 44.3):
+                        ax.text(h, yard, str(50 - abs(yard - 60)), color="white", alpha=0.55, fontsize=17,
+                                fontweight="bold", ha="center", va="center", zorder=1)
+        ax.axhline(play["los_x"], color=los_c, lw=3, zorder=2)
+        ax.axhline(play["sticks_x"], color=sticks_c, lw=3, zorder=2)
+
+        target = next(p for p in everyone if p["target"])
+        for p in everyone:
+            offense, runner = p["side"] == "offense", p["role"] in ("Pass Route", "Coverage")
+            h, v = across(p["y"]), np.asarray(p["x"])
+            ax.plot(h, v, color=off_c if offense else def_c, lw=1.8 if runner else 0.9,
+                    alpha=0.95 if runner else 0.5, zorder=3, solid_capstyle="round")
+            flags = np.asarray(p.get("in_window", []), dtype=bool)
+            if flags.any():            # the stretch of the route that is in the window
+                ax.plot(np.where(flags, h, np.nan), np.where(flags, v, np.nan), color=win_c, lw=6,
+                        zorder=4, solid_capstyle="round")
+            ax.plot(h[-1], v[-1], "o", ms=11 if runner else 8, color=off_c if offense else def_c,
+                    mec=def_c if offense else off_c, mew=1.3, zorder=6)
+            if flags.any() or p["target"]:
+                ax.annotate(p["name"].split(" ", 1)[1], (h[-1], v[-1]), xytext=(0, 11), textcoords="offset points",
+                            ha="center", color="white", fontsize=10.5, fontweight="bold", path_effects=halo, zorder=8)
+        bh, bv = across(play["ball_at_throw"][1]), play["ball_at_throw"][0]
+        th, tv = across(target["y"][-1]), target["x"][-1]
+        ax.plot([bh, th], [bv, tv], color="white", lw=1.4, ls=(0, (4, 3)), zorder=5)
+        ax.plot(th, tv, "o", ms=19, mfc="none", mec=sticks_c, mew=2.5, zorder=7)
+        ax.plot(bh, bv, marker="o", ms=9, color=ball_c, mec="white", mew=1.2, zorder=7)
+
+        ax.set_xlim(0, 53.3); ax.set_ylim(lo, hi); ax.set_aspect("equal")
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(visible=False)
+        for sp in ax.spines.values():
+            sp.set_visible(True); sp.set_color("white"); sp.set_linewidth(2)
+
+        flags = np.asarray(target["in_window"], dtype=bool)
+        opened = np.argmax(flags) / 10 if flags.any() else None
+        if flags[-1]:
+            window = f"{target['name']}'s window opened {opened:.1f} s after the snap and was still open at the throw."
+        else:
+            closed = (len(flags) - np.argmax(flags[::-1])) / 10
+            mates = [p["name"] for p in everyone if not p["target"] and p.get("in_window", [0])[-1]]
+            window = (f"{target['name']}'s window opened at {opened:.1f} s and closed at {closed:.1f} s. "
+                      f"Open past the sticks at the throw: {' and '.join(mates) if mates else 'no one'}.")
+        ordinal = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th"}[play["down"]]
+        result = (f"complete to {target['name']} for {play['yards']} yards" + (", touchdown" if play["touchdown"] else "")
+                  if play["passResult"] == "C" else f"incomplete to {target['name']}")
+        ax.set_title(play["story"].replace(": ", ":\n"), fontsize=11.5, pad=8)
+        ax.set_xlabel(wrap(f"{play['offense']} vs {play['defense']} · {ordinal} & {play['yardsToGo']} · "
+                           f"ball out {play['time_to_throw']:.1f} s after the snap · {result}") + "\n" + wrap(window),
+                      color=INK, fontsize=10.5, labelpad=8)
+
+    dot = lambda c, e: plt.Line2D([], [], marker="o", ls="", ms=10, color=c, mec=e, mew=1.3)
+    fig.legend([dot(off_c, def_c), dot(def_c, off_c), plt.Line2D([], [], color=win_c, lw=6),
+                plt.Line2D([], [], color=los_c, lw=3), plt.Line2D([], [], color=sticks_c, lw=3),
+                plt.Line2D([], [], marker="o", ls="", ms=15, mfc="none", mec=sticks_c, mew=2.5), dot(ball_c, "white")],
+               ["Offense", "Defense", "In the window", "Line of scrimmage", "First-down line", "Target", "Ball at the throw"],
+               loc="lower center", ncol=7, frameon=True, facecolor=turf, edgecolor="none", labelcolor="white",
+               fontsize=10, bbox_to_anchor=(0.5, 0.0), columnspacing=1.6, handletextpad=0.6)
+    fig.suptitle("The window on a real play: routes from the snap to the throw", fontsize=14, fontweight="bold",
+                 x=0.07, ha="left", y=0.985)
+    fig.subplots_adjust(wspace=0.06, bottom=0.2, top=0.87, left=0.04, right=0.96)
+    save(fig, "fig_example_plays.png")
+
+
 # ----------------------------------------------------------------- page
 def write_page(findings: dict) -> None:
     """index.html: one self-contained page (inline CSS, JS and data) built from the findings."""
@@ -340,6 +426,7 @@ def main() -> None:
     (OUT / "findings.json").write_text(json.dumps(findings, indent=2, default=float))
     print(json.dumps(findings, indent=2, default=float))
     write_page(json.loads(json.dumps(findings, default=float)))
+    example_plays()
 
 
 if __name__ == "__main__":
