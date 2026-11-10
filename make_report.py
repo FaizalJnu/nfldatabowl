@@ -16,6 +16,7 @@ import pandas as pd
 OUT = Path("outputs")
 KEYS = ["gameId", "playId"]
 OPEN_YARDS = 2.0      # separation from the nearest coverage defender at release
+THIN_WINDOWS = 50     # yards-to-go rows with fewer windows are flagged as thin
 MIN_ROUTES = 50       # man-coverage routes needed to appear in the profile chart
 
 INK, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
@@ -134,6 +135,23 @@ def third_down(routes: pd.DataFrame) -> dict:
 
 
 # --------------------------------------------------------- sticks clock
+def km_duration(win: pd.DataFrame) -> dict:
+    """Kaplan-Meier estimate of how long a window stays open.
+    The throw ends the tracking, so a window still open at the release frame is
+    censored: we know only that it lasted at least that long."""
+    dur = win.window_dur.round(1).values
+    ended = (win.window_open_t + win.window_dur <= win.time_to_throw + 1e-6).values
+    surv, curve = 1.0, {}
+    for x in np.unique(dur):
+        at_risk = (dur >= x).sum()
+        surv *= 1 - ((dur == x) & ended).sum() / at_risk
+        curve[float(x)] = surv
+    median = next((x for x, s in curve.items() if s <= 0.5), None)   # None = over half outlast the data
+    still_open = lambda x: round(min([s for t, s in curve.items() if t <= x], default=1.0), 3)
+    return {"windows": len(win), "ended_before_throw": int(ended.sum()), "median_s": median,
+            "share_lasting_beyond_0.5s": still_open(0.5), "share_lasting_beyond_1.0s": still_open(1.0)}
+
+
 def sticks_clock(routes: pd.DataFrame) -> dict:
     """When does a first-down window open, how long does it last, and when is the ball thrown?
     A window = 3+ consecutive frames open (2+ yards of separation) at or past the sticks."""
@@ -150,28 +168,29 @@ def sticks_clock(routes: pd.DataFrame) -> dict:
         c = g[g.open_at_throw == 0]
         rows.append({"to_go": b, "routes": int((late.bucket == b).sum()), "windows": len(g),
                      "open_t": q(g.window_open_t), "throw_t": q(g.time_to_throw),
-                     "closed_windows": len(c), "closed_dur": q(c.window_dur),
-                     "share_closed": round(len(c) / len(g), 3)})
+                     "closed_windows": len(c), "share_closed": round(len(c) / len(g), 3),
+                     "duration": km_duration(g), "thin_sample": len(g) < THIN_WINDOWS})
 
     fig, ax = plt.subplots(figsize=(8.5, 4.4))
     for y, r in enumerate(rows):
-        o, t, d = r["open_t"], r["throw_t"], r["closed_dur"][1]
+        o, t, d = r["open_t"], r["throw_t"], r["duration"]["median_s"]
         ax.barh(y, d, left=o[1], height=0.5, color="#b7d3f6", lw=0)
-        ax.text(o[1] + d / 2, y - 0.36, f"{d:.1f} s", ha="center", va="bottom", fontsize=9, color=MUTED)
+        ax.text(o[1] + d / 2, y - 0.36, f"stays open {d:.1f} s" + (" (thin sample)" if r["thin_sample"] else ""),
+                ha="center", va="bottom", fontsize=9, color=MUTED)
         ax.hlines(y - 0.1, o[0], o[2], color=BLUE, lw=2, alpha=0.45)
         ax.plot(o[1], y - 0.1, "o", ms=9, color=BLUE, mec=SURFACE, mew=1.5)
         ax.hlines(y + 0.1, t[0], t[2], color=ORANGE, lw=2, alpha=0.45)
         ax.plot(t[1], y + 0.1, "D", ms=8, color=ORANGE, mec=SURFACE, mew=1.5)
     ax.set_yticks(range(len(rows)), [f"3rd/4th & {r['to_go']}\n{r['windows']} windows" for r in rows], color=INK)
-    ax.set_ylim(len(rows) - 0.45, -0.75); ax.set_xlim(0.5, 5.2)
+    ax.set_ylim(len(rows) - 0.45, -0.75); ax.set_xlim(0.5, 6)
     ax.tick_params(axis="y", length=0); ax.grid(axis="y", visible=False)
     ax.set_xlabel("Seconds after the snap (marker = median, line = middle half of routes)")
     handles = [plt.Line2D([], [], marker="o", ls="", ms=9, color=BLUE, mec=SURFACE, label="Window opens"),
-               plt.Rectangle((0, 0), 1, 1, color="#b7d3f6", label="How long a window lasts when it closes (median)"),
+               plt.Rectangle((0, 0), 1, 1, color="#b7d3f6", label="Typical time it stays open (survival-estimate median)"),
                plt.Line2D([], [], marker="D", ls="", ms=8, color=ORANGE, mec=SURFACE, label="Ball comes out, same routes")]
     ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.17), ncol=3, frameon=False,
               fontsize=9.5, columnspacing=1.4, handletextpad=0.5)
-    ax.set_title("The Sticks Clock: a first-down window vs man lasts about half a second")
+    ax.set_title("The Sticks Clock: the first-down window opens later the more yards you need")
     save(fig, "fig0_sticks_clock.png")
 
     t = late[late.targeted == 1]
@@ -183,7 +202,8 @@ def sticks_clock(routes: pd.DataFrame) -> dict:
             "route_states": late.state.value_counts().to_dict(),
             "window_opens_s_q25_med_q75": q(win.window_open_t),
             "throw_s_same_routes_q25_med_q75": q(win.time_to_throw),
-            "closed_window_duration_s_q25_med_q75": q(closed.window_dur),
+            "window_duration_km": {"all": km_duration(win), "not_targeted": km_duration(win[win.targeted == 0]),
+                                   "targeted": km_duration(win[win.targeted == 1])},
             "first_down_rate_by_target_state": by_state["mean"].round(3).to_dict(),
             "targets_by_state": by_state["size"].to_dict(),
             "first_down_rate_by_seconds_held": {str(k): [round(v["mean"], 3), int(v["size"])] for k, v in hold.iterrows()},

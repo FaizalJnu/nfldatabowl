@@ -23,11 +23,29 @@
       2.9,
       3.72
     ],
-    "closed_window_duration_s_q25_med_q75": [
-      0.4,
-      0.5,
-      0.8
-    ],
+    "window_duration_km": {
+      "all": {
+        "windows": 740,
+        "ended_before_throw": 313,
+        "median_s": 1.2,
+        "share_lasting_beyond_0.5s": 0.775,
+        "share_lasting_beyond_1.0s": 0.538
+      },
+      "not_targeted": {
+        "windows": 547,
+        "ended_before_throw": 247,
+        "median_s": 1.1,
+        "share_lasting_beyond_0.5s": 0.776,
+        "share_lasting_beyond_1.0s": 0.514
+      },
+      "targeted": {
+        "windows": 193,
+        "ended_before_throw": 66,
+        "median_s": 1.4,
+        "share_lasting_beyond_0.5s": 0.775,
+        "share_lasting_beyond_1.0s": 0.614
+      }
+    },
     "first_down_rate_by_target_state": {
       "Never open": 0.399,
       "Open at the throw": 0.663,
@@ -76,12 +94,15 @@
           3.4
         ],
         "closed_windows": 118,
-        "closed_dur": [
-          0.4,
-          0.6,
-          0.8
-        ],
-        "share_closed": 0.4
+        "share_closed": 0.4,
+        "duration": {
+          "windows": 295,
+          "ended_before_throw": 139,
+          "median_s": 1.1,
+          "share_lasting_beyond_0.5s": 0.772,
+          "share_lasting_beyond_1.0s": 0.52
+        },
+        "thin_sample": false
       },
       {
         "to_go": "4-6",
@@ -98,12 +119,15 @@
           3.3
         ],
         "closed_windows": 91,
-        "closed_dur": [
-          0.4,
-          0.5,
-          0.8
-        ],
-        "share_closed": 0.408
+        "share_closed": 0.408,
+        "duration": {
+          "windows": 223,
+          "ended_before_throw": 102,
+          "median_s": 0.9,
+          "share_lasting_beyond_0.5s": 0.733,
+          "share_lasting_beyond_1.0s": 0.409
+        },
+        "thin_sample": false
       },
       {
         "to_go": "7-10",
@@ -120,12 +144,15 @@
           4.2
         ],
         "closed_windows": 52,
-        "closed_dur": [
-          0.4,
-          0.6,
-          0.82
-        ],
-        "share_closed": 0.295
+        "share_closed": 0.295,
+        "duration": {
+          "windows": 176,
+          "ended_before_throw": 61,
+          "median_s": 1.5,
+          "share_lasting_beyond_0.5s": 0.817,
+          "share_lasting_beyond_1.0s": 0.656
+        },
+        "thin_sample": false
       },
       {
         "to_go": "11+",
@@ -142,12 +169,15 @@
           5.1
         ],
         "closed_windows": 8,
-        "closed_dur": [
-          0.4,
-          0.45,
-          0.6
-        ],
-        "share_closed": 0.174
+        "share_closed": 0.174,
+        "duration": {
+          "windows": 46,
+          "ended_before_throw": 11,
+          "median_s": 2.4,
+          "share_lasting_beyond_0.5s": 0.841,
+          "share_lasting_beyond_1.0s": 0.785
+        },
+        "thin_sample": true
       }
     ]
   },
