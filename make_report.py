@@ -133,12 +133,70 @@ def third_down(routes: pd.DataFrame) -> dict:
             "missed_all_downs": missed(routes), "missed_late_downs": missed(late)}
 
 
+# --------------------------------------------------------- sticks clock
+def sticks_clock(routes: pd.DataFrame) -> dict:
+    """When does a first-down window open, how long does it last, and when is the ball thrown?
+    A window = 3+ consecutive frames open (2+ yards of separation) at or past the sticks."""
+    late = routes[routes.window.notna()].copy()
+    late["state"] = np.select([late.open_at_throw == 1, late.window == 1],
+                              ["Open at the throw", "Window closed before the throw"], "Never open")
+    late["bucket"] = pd.cut(late.yardsToGo, [0, 3, 6, 10, 99], labels=["1-3", "4-6", "7-10", "11+"])
+    win = late[late.window == 1]
+    closed = win[win.open_at_throw == 0]
+
+    q = lambda s: s.quantile([0.25, 0.5, 0.75]).round(2).tolist()
+    rows = []
+    for b, g in win.groupby("bucket", observed=True):
+        c = g[g.open_at_throw == 0]
+        rows.append({"to_go": b, "routes": int((late.bucket == b).sum()), "windows": len(g),
+                     "open_t": q(g.window_open_t), "throw_t": q(g.time_to_throw),
+                     "closed_windows": len(c), "closed_dur": q(c.window_dur),
+                     "share_closed": round(len(c) / len(g), 3)})
+
+    fig, ax = plt.subplots(figsize=(8.5, 4.4))
+    for y, r in enumerate(rows):
+        o, t, d = r["open_t"], r["throw_t"], r["closed_dur"][1]
+        ax.barh(y, d, left=o[1], height=0.5, color="#b7d3f6", lw=0)
+        ax.text(o[1] + d / 2, y - 0.36, f"{d:.1f} s", ha="center", va="bottom", fontsize=9, color=MUTED)
+        ax.hlines(y - 0.1, o[0], o[2], color=BLUE, lw=2, alpha=0.45)
+        ax.plot(o[1], y - 0.1, "o", ms=9, color=BLUE, mec=SURFACE, mew=1.5)
+        ax.hlines(y + 0.1, t[0], t[2], color=ORANGE, lw=2, alpha=0.45)
+        ax.plot(t[1], y + 0.1, "D", ms=8, color=ORANGE, mec=SURFACE, mew=1.5)
+    ax.set_yticks(range(len(rows)), [f"3rd/4th & {r['to_go']}\n{r['windows']} windows" for r in rows], color=INK)
+    ax.set_ylim(len(rows) - 0.45, -0.75); ax.set_xlim(0.5, 5.2)
+    ax.tick_params(axis="y", length=0); ax.grid(axis="y", visible=False)
+    ax.set_xlabel("Seconds after the snap (marker = median, line = middle half of routes)")
+    handles = [plt.Line2D([], [], marker="o", ls="", ms=9, color=BLUE, mec=SURFACE, label="Window opens"),
+               plt.Rectangle((0, 0), 1, 1, color="#b7d3f6", label="How long a window lasts when it closes (median)"),
+               plt.Line2D([], [], marker="D", ls="", ms=8, color=ORANGE, mec=SURFACE, label="Ball comes out, same routes")]
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.17), ncol=3, frameon=False,
+              fontsize=9.5, columnspacing=1.4, handletextpad=0.5)
+    ax.set_title("The Sticks Clock: a first-down window vs man lasts about half a second")
+    save(fig, "fig0_sticks_clock.png")
+
+    t = late[late.targeted == 1]
+    by_state = t.groupby("state").first_down.agg(["mean", "size"])
+    hold = t.groupby(pd.cut(t.time_to_throw, [0, 2, 2.5, 3, 3.5, 20]), observed=True).first_down.agg(["mean", "size"])
+    return {"routes": len(late), "plays": late.groupby(KEYS).ngroups,
+            "routes_with_window": len(win), "window_rate": round(len(win) / len(late), 3),
+            "windows_closed_before_throw": len(closed), "share_closed": round(len(closed) / len(win), 3),
+            "route_states": late.state.value_counts().to_dict(),
+            "window_opens_s_q25_med_q75": q(win.window_open_t),
+            "throw_s_same_routes_q25_med_q75": q(win.time_to_throw),
+            "closed_window_duration_s_q25_med_q75": q(closed.window_dur),
+            "first_down_rate_by_target_state": by_state["mean"].round(3).to_dict(),
+            "targets_by_state": by_state["size"].to_dict(),
+            "first_down_rate_by_seconds_held": {str(k): [round(v["mean"], 3), int(v["size"])] for k, v in hold.iterrows()},
+            "by_yards_to_go": rows}
+
+
 # -------------------------------------------------------------- 3. matchup
 def matchup_grid(routes: pd.DataFrame) -> dict:
     """Open rate by who lined up over the receiver at the snap."""
     m = routes[routes.snap_def_pos.isin(["CB", "S", "LB"])]
     g = m.groupby(["officialPosition", "snap_def_pos"]).open.agg(["mean", "size"])
     rows, cols = ["WR", "TE"], ["CB", "S", "LB"]
+    dist = m.groupby("snap_def_pos").snap_def_dist.median()
     rate = g["mean"].unstack().loc[rows, cols]
     n = g["size"].unstack().loc[rows, cols]
 
@@ -155,12 +213,16 @@ def matchup_grid(routes: pd.DataFrame) -> dict:
     ax.grid(visible=False); ax.grid(which="minor", color=SURFACE, linewidth=2)
     ax.tick_params(which="both", length=0, colors=INK)
     for s in ax.spines.values(): s.set_visible(False)
-    ax.set_xlabel("Nearest coverage defender at the snap")
-    ax.set_title("Share of routes open at release, by who lined up over him")
+    ax.set_xlabel("Nearest coverage defender at the snap (median distance away: "
+                  + ", ".join(f"{c} {dist[c]:.1f} yd" for c in cols) + ")")
+    ax.set_title("Share of routes open at release, by nearest defender at the snap")
     save(fig, "fig3_matchup_grid.png")
     same = (routes.snap_def_pos == routes.release_def_pos).mean()
     return {"open_rate": rate.round(3).to_dict("index"), "routes": n.to_dict("index"),
-            "snap_and_release_defender_same_position_group": round(same, 3)}
+            "snap_and_release_defender_same_position_group": round(same, 3),
+            "median_snap_distance_yards": dist.round(2).to_dict(),
+            "median_snap_distance_yards_wr_only": m[m.officialPosition == "WR"].groupby("snap_def_pos")
+                                                   .snap_def_dist.median().round(2).to_dict()}
 
 
 # ------------------------------------------------------------- 4. profiles
@@ -216,6 +278,7 @@ def profiles(routes: pd.DataFrame) -> dict:
 def main() -> None:
     routes = load()
     findings = {"open_definition_yards": OPEN_YARDS, "wr_te_man_routes": len(routes),
+                "sticks_clock": sticks_clock(routes),
                 "proof": proof_chart(routes), "third_down": third_down(routes),
                 "matchup": matchup_grid(routes), "profiles": profiles(routes)}
     (OUT / "findings.json").write_text(json.dumps(findings, indent=2, default=float))

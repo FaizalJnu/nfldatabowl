@@ -1,6 +1,156 @@
 {
   "open_definition_yards": 2.0,
   "wr_te_man_routes": 7823,
+  "sticks_clock": {
+    "routes": 3656,
+    "plays": 944,
+    "routes_with_window": 740,
+    "window_rate": 0.202,
+    "windows_closed_before_throw": 269,
+    "share_closed": 0.364,
+    "route_states": {
+      "Never open": 2797,
+      "Open at the throw": 590,
+      "Window closed before the throw": 269
+    },
+    "window_opens_s_q25_med_q75": [
+      1.6,
+      2.1,
+      2.6
+    ],
+    "throw_s_same_routes_q25_med_q75": [
+      2.4,
+      2.9,
+      3.72
+    ],
+    "closed_window_duration_s_q25_med_q75": [
+      0.4,
+      0.5,
+      0.8
+    ],
+    "first_down_rate_by_target_state": {
+      "Never open": 0.399,
+      "Open at the throw": 0.663,
+      "Window closed before the throw": 0.491
+    },
+    "targets_by_state": {
+      "Never open": 622,
+      "Open at the throw": 175,
+      "Window closed before the throw": 53
+    },
+    "first_down_rate_by_seconds_held": {
+      "(0.0, 2.0]": [
+        0.548,
+        124
+      ],
+      "(2.0, 2.5]": [
+        0.486,
+        276
+      ],
+      "(2.5, 3.0]": [
+        0.416,
+        219
+      ],
+      "(3.0, 3.5]": [
+        0.427,
+        110
+      ],
+      "(3.5, 20.0]": [
+        0.413,
+        121
+      ]
+    },
+    "by_yards_to_go": [
+      {
+        "to_go": "1-3",
+        "routes": 956,
+        "windows": 295,
+        "open_t": [
+          1.3,
+          1.6,
+          2.1
+        ],
+        "throw_t": [
+          2.2,
+          2.6,
+          3.4
+        ],
+        "closed_windows": 118,
+        "closed_dur": [
+          0.4,
+          0.6,
+          0.8
+        ],
+        "share_closed": 0.4
+      },
+      {
+        "to_go": "4-6",
+        "routes": 1276,
+        "windows": 223,
+        "open_t": [
+          1.7,
+          1.9,
+          2.3
+        ],
+        "throw_t": [
+          2.4,
+          2.7,
+          3.3
+        ],
+        "closed_windows": 91,
+        "closed_dur": [
+          0.4,
+          0.5,
+          0.8
+        ],
+        "share_closed": 0.408
+      },
+      {
+        "to_go": "7-10",
+        "routes": 1129,
+        "windows": 176,
+        "open_t": [
+          2.2,
+          2.4,
+          2.9
+        ],
+        "throw_t": [
+          2.9,
+          3.35,
+          4.2
+        ],
+        "closed_windows": 52,
+        "closed_dur": [
+          0.4,
+          0.6,
+          0.82
+        ],
+        "share_closed": 0.295
+      },
+      {
+        "to_go": "11+",
+        "routes": 295,
+        "windows": 46,
+        "open_t": [
+          2.8,
+          3.25,
+          3.8
+        ],
+        "throw_t": [
+          3.6,
+          4.0,
+          5.1
+        ],
+        "closed_windows": 8,
+        "closed_dur": [
+          0.4,
+          0.45,
+          0.6
+        ],
+        "share_closed": 0.174
+      }
+    ]
+  },
   "proof": {
     "man_targets": 1825,
     "avg_completion": 0.5397260273972603,
@@ -87,7 +237,17 @@
         "LB": 684
       }
     },
-    "snap_and_release_defender_same_position_group": 0.8
+    "snap_and_release_defender_same_position_group": 0.8,
+    "median_snap_distance_yards": {
+      "CB": 3.19,
+      "LB": 5.18,
+      "S": 3.99
+    },
+    "median_snap_distance_yards_wr_only": {
+      "CB": 3.02,
+      "LB": 5.78,
+      "S": 4.33
+    }
   },
   "profiles": {
     "players": 53,
